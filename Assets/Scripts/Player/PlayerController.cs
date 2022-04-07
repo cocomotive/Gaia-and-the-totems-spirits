@@ -4,94 +4,114 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    public GameObject bulletPrefab;
-    public GameObject pj;
-    //public new Vector3 respawn;
-    private Rigidbody2D rb2d;
-    //private Animator anim;
-    //Blink material;
-    SpriteRenderer sprite;
+    float horizontal;
+    float vertical;
+    public float movSpeed;
     public float jumpForce;
-    private float speed = 6;
-    private float horizontal;
-    public bool grounded;
-    private float lastShoot;
-    bool isInmune;
-    public float inmunityTime;
-    public float knockBackForceX;
-    public float knockBackForceY;
+    Rigidbody2D rb2d;
+    IEnumerator dashCoroutine;
+    bool isDashing;
+    bool canDash = true;
+    bool grounded;
+    float direction = 1;
+    float normalGravity;
+    public int jumpCount;
+    public int extraJumps = 1;
+    float jumpCooldown;
 
 
-    // Start is called before the first frame update
-    void Start()
+
+    private void Start()
     {
         rb2d = GetComponent<Rigidbody2D>();
-        //anim = GetComponent<Animator>();
-        //material = GetComponent<Blink>();
-        sprite = GetComponent<SpriteRenderer>();
+        normalGravity = rb2d.gravityScale;
     }
 
-    // Update is called once per frame
-    void Update()
+    private void Update()
     {
+        if (horizontal != 0)
+        {
+            direction = horizontal;
+        }
+
         horizontal = Input.GetAxisRaw("Horizontal");
 
-        //anim.SetBool("running", horizontal != 0.0f);
-
-        if (horizontal < 0.0f)
-        {
-            transform.localScale = new Vector3(-1.0f, 1.0f, 1.0f);
-        }
-
-        else if (horizontal > 0.0f)
-        {
-            transform.localScale = new Vector3(1.0f, 1.0f, 1.0f);
-        }
-
-        Debug.DrawRay(transform.position, Vector3.down * 0.65f, Color.red);
-
-        if (Physics2D.Raycast(transform.position, Vector3.down, 0.65f))
+        Debug.DrawRay(transform.position, Vector3.down * 0.55f, Color.red);
+        /*if (Physics2D.Raycast(transform.position, Vector3.down, 0.55f))
         {
             grounded = true;
         }
 
-        else grounded = false;
+        else grounded = false;*/
 
-        if (Input.GetKeyDown(KeyCode.UpArrow) && grounded)
+        if (Input.GetKeyDown(KeyCode.UpArrow))
         {
             jump();
         }
 
-        //if (Input.GetKey(KeyCode.Space) && Time.time > lastShoot + 0.25f)
-        //{
-        //    shoot();
-        //    lastShoot = Time.time;
-        //}
+        CheckGrounded();
+
+        if (Input.GetKeyDown(KeyCode.LeftControl) && canDash == true)
+        {
+            if (dashCoroutine != null)
+            {
+                StopCoroutine(dashCoroutine);
+            }
+            dashCoroutine = Dash(.1f, 1);
+            StartCoroutine(dashCoroutine);
+        }
     }
 
     private void FixedUpdate()
     {
-        rb2d.velocity = new Vector2(horizontal * speed, rb2d.velocity.y);
+        rb2d.AddForce(new Vector2(horizontal * movSpeed, 0));
+        if (isDashing)
+        {
+            rb2d.AddForce(new Vector2(direction * 10, 0), ForceMode2D.Impulse);
+        }
     }
 
     private void jump()
     {
-        rb2d.AddForce(Vector2.up * jumpForce);
+
+        if (grounded || jumpCount < extraJumps)
+        {
+            rb2d.velocity=new Vector2(0, jumpForce);
+            jumpCount++;
+        }
+        
     }
 
-    //private void shoot()
-    //{
-    //    Vector3 bDirection;
+    void CheckGrounded()
+    {
+        if (Physics2D.Raycast(transform.position, Vector3.down, 0.55f))
+        {
+            grounded = true;
+            jumpCount = 0;
+            jumpCooldown = Time.time + 0.2f;
+        }
+        else if (Time.time < jumpCooldown)
+        {
+            grounded = true;
+        }
+        else
+        {
+            grounded = false;
+        }
+    }
 
-    //    if (transform.localScale.x == 3.0f) bDirection = Vector3.right;
-
-    //    else
-
-    //    {
-    //        bDirection = Vector3.left;
-    //    }
-
-    //    GameObject bullet = Instantiate(bulletPrefab, transform.position + bDirection * 0.4f, Quaternion.identity);
-    //    bullet.GetComponent<bullet>().setDirection(bDirection);
-    //}
+    IEnumerator Dash(float dashDuration, float dashCooldown)
+    {
+        Vector2 originalVelocity = rb2d.velocity;
+        isDashing = true;
+        canDash = false;
+        rb2d.gravityScale = 0;
+        rb2d.velocity = Vector2.zero;
+        yield return new WaitForSeconds(dashDuration);
+        isDashing = false;
+        rb2d.gravityScale = normalGravity;
+        rb2d.velocity = originalVelocity;
+        yield return new WaitForSeconds(dashCooldown);
+        canDash = true;
+    }
 }
