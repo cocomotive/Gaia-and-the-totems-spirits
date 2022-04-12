@@ -47,6 +47,7 @@ public class PlayerController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.UpArrow))
         {
             jump();
+            Debug.Log("hoa");
         }
 
         CheckGrounded();
